@@ -208,8 +208,11 @@
     // smaller than the frame, so measuring it would stop the frame shrinking.
     var wrap = document.querySelector('.wrap');
     var w = document.documentElement.clientWidth;
-    var h = wrap.offsetHeight;
+    var h = Math.ceil(wrap.getBoundingClientRect().height) + 2;
     var ratio = fixedRatio || (w / h);
+    // Auto mode: the frame is sized to the content, so hide the scrollbar.
+    // Fixed mode: keep it, so a short frame can still be scrolled.
+    document.documentElement.style.overflow = fixedRatio ? '' : 'hidden';
     window.parent.postMessage({ action: { action: '@webframe.resize', aspectRatio: ratio } }, '*');
   }
   window.addEventListener('message', function (event) {
