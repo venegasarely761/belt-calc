@@ -50,7 +50,7 @@
 <body>
 <div class="wrap">
   <header>
-    <span class="ver">v6<br><span id="dbg"></span></span>
+    <span class="ver">v7<br><span id="dbg"></span></span>
     <h1>Belt Calculator</h1>
     <p>Belt length and center distance for a two-pulley belt drive</p>
   </header>
@@ -212,9 +212,8 @@
     var w = document.documentElement.clientWidth;
     var h = Math.ceil(wrap.getBoundingClientRect().height) + 2;
     var ratio = fixedRatio || (w / h);
-    // Auto mode: the frame is sized to the content, so hide the scrollbar.
-    // Fixed mode: keep it, so a short frame can still be scrolled.
-    document.documentElement.style.overflow = fixedRatio ? '' : 'hidden';
+    // Keep the normal scrollbar as a backup in case the frame is a little short.
+    document.documentElement.style.overflow = '';
     var msg = { action: '@webframe.resize', aspectRatio: ratio };
     // Auto mode: also state the exact content height, in case GitBook applies
     // a default height cap when none is given.
