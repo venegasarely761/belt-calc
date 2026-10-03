@@ -50,7 +50,7 @@
 <body>
 <div class="wrap">
   <header>
-    <span class="ver">v5</span>
+    <span class="ver">v6<br><span id="dbg"></span></span>
     <h1>Belt Calculator</h1>
     <p>Belt length and center distance for a two-pulley belt drive</p>
   </header>
@@ -220,6 +220,9 @@
     // a default height cap when none is given.
     if (!fixedRatio) msg.maxHeight = h;
     window.parent.postMessage({ action: msg }, '*');
+    // Debug readout (top right): what this page measured and sent.
+    var d = document.getElementById('dbg');
+    if (d) d.textContent = 'w' + w + ' h' + h + ' r' + ratio.toFixed(2) + (fixedRatio ? ' fixed' : ' auto');
   }
   window.addEventListener('message', function (event) {
     var r = parseFloat(event.data && event.data.state && event.data.state.ratio);
