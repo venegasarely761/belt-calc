@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Belt Calculator</title>
+<meta name="twitter:card" content="player">
+<meta name="twitter:title" content="Belt Calculator">
+<meta name="twitter:player" content="https://venegasarely761.github.io/belt-calc/">
+<meta name="twitter:player:width" content="720">
+<meta name="twitter:player:height" content="700">
+<style>
+  :root {
+    --blue: #0075c9;
+    --blue-dark: #005a9c;
+    --cream: #faf6ec;
+    --ink: #1f2933;
+    --line: #cfd8e3;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px 24px; }
+  header { background: var(--blue); color: #fff; padding: 14px 16px; margin: 0 -16px 16px; }
+  header h1 { margin: 0; font-size: 1.15rem; }
+  header p { margin: 2px 0 0; font-size: .85rem; opacity: .9; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: 4px; color: var(--blue-dark); }
+  input, select { width: 100%; padding: 9px 10px; font-size: 1rem; border: 1px solid var(--line);
+    border-radius: 6px; background: #fff; color: var(--ink); }
+  input:focus, select:focus { outline: 2px solid var(--blue); outline-offset: 0; border-color: var(--blue); }
+  .modes { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
+  .modes button { flex: 1 1 200px; padding: 9px 12px; font-size: .9rem; border: 1px solid var(--blue);
+    background: #fff; color: var(--blue); border-radius: 6px; cursor: pointer; font-weight: 600; }
+  .modes button.active { background: var(--blue); color: #fff; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--blue);
+    border-radius: 6px; padding: 12px 14px; margin-top: 16px; }
+  .card h2 { margin: 0 0 8px; font-size: .95rem; color: var(--blue-dark); }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #e6ecf2; }
+  th { color: var(--blue-dark); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .err { color: #b3261e; font-size: .9rem; margin-top: 12px; }
+  .note { font-size: .78rem; color: #52606d; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Belt Calculator</h1>
+    <p>Belt length and center distance for a two-pulley belt drive</p>
+  </header>
+
+  <div class="grid">
+    <div>
+      <label for="belt">Belt profile</label>
+      <select id="belt">
+        <option value="3">GT2 (3 mm pitch)</option>
+        <option value="5" selected>HTD 5M (5 mm pitch)</option>
+        <option value="8">HTD 8M (8 mm pitch)</option>
+      </select>
+    </div>
+    <div>
+      <label for="t1">Pulley 1 teeth</label>
+      <input id="t1" type="number" min="6" step="1" value="18">
+    </div>
+    <div>
+      <label for="t2">Pulley 2 teeth</label>
+      <input id="t2" type="number" min="6" step="1" value="36">
+    </div>
+  </div>
+
+  <div class="modes">
+    <button id="m1" class="active" type="button">I know the center distance</button>
+    <button id="m2" type="button">I know the belt tooth count</button>
+  </div>
+
+  <div class="grid">
+    <div id="cdBox">
+      <label for="cd">Center distance</label>
+      <input id="cd" type="number" min="0" step="any" value="100">
+    </div>
+    <div id="unitBox">
+      <label for="unit">Distance units</label>
+      <select id="unit">
+        <option value="mm" selected>mm</option>
+        <option value="in">inches</option>
+      </select>
+    </div>
+    <div id="beltBox" style="display:none">
+      <label for="bt">Belt teeth</label>
+      <input id="bt" type="number" min="1" step="1" value="90">
+    </div>
+  </div>
+
+  <div id="err" class="err"></div>
+  <div id="out"></div>
+
+  <p class="note">Uses the exact open-belt length formula with pitch diameters (teeth &times; pitch &divide; &pi;).
+    Real builds usually need a little slack or a tensioner, and belt tooth counts are only sold in certain sizes, so check what is available.</p>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var mode = 1;
+
+  function beltLen(C, D1, D2) {
+    var d = Math.abs(D2 - D1);
+    var phi = Math.asin(Math.min(1, d / (2 * C)));
+    return 2 * C * Math.cos(phi) + Math.PI * (D1 + D2) / 2 + phi * d;
+  }
+
+  // Returns center distance for a belt length, or null if the belt is too short.
+  function centerFor(L, D1, D2) {
+    var d = Math.abs(D2 - D1);
+    var lo = d / 2 + 1e-9;
+    if (L < beltLen(lo, D1, D2)) return null;
+    var hi = Math.max(L, lo * 2);
+    while (beltLen(hi, D1, D2) < L) hi *= 2;
+    for (var i = 0; i < 80; i++) {
+      var mid = (lo + hi) / 2;
+      if (beltLen(mid, D1, D2) < L) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  function f(x, n) { return x.toFixed(n); }
+  function mmToIn(x) { return x / 25.4; }
+
+  function row(label, mm) {
+    return '<tr><td>' + label + '</td><td class="num">' + f(mm, 2) + ' mm</td><td class="num">' + f(mmToIn(mm), 3) + ' in</td></tr>';
+  }
+
+  function calc() {
+    var pitch = parseFloat($('belt').value);
+    var t1 = parseInt($('t1').value, 10);
+    var t2 = parseInt($('t2').value, 10);
+    var err = $('err'), out = $('out');
+    err.textContent = ''; out.innerHTML = '';
+
+    if (!(t1 > 0) || !(t2 > 0)) { err.textContent = 'Enter a tooth count for both pulleys.'; return; }
+
+    var D1 = t1 * pitch / Math.PI;
+    var D2 = t2 * pitch / Math.PI;
+    var html = '<div class="card"><h2>Pulleys</h2><table>' +
+      row('Pulley 1 pitch diameter', D1) + row('Pulley 2 pitch diameter', D2) + '</table></div>';
+
+    if (mode === 1) {
+      var c = parseFloat($('cd').value);
+      if (!(c > 0)) { err.textContent = 'Enter a center distance greater than 0.'; return; }
+      var cmm = $('unit').value === 'in' ? c * 25.4 : c;
+      if (cmm <= Math.abs(D2 - D1) / 2) { err.textContent = 'Center distance is too small for these pulleys. The belt cannot wrap them.'; return; }
+      var L = beltLen(cmm, D1, D2);
+      var teeth = L / pitch;
+      var lo = Math.floor(teeth), hi = Math.ceil(teeth);
+      html += '<div class="card"><h2>Belt for this center distance</h2><table>' +
+        row('Belt pitch length', L) +
+        '<tr><td>Belt teeth (exact)</td><td class="num" colspan="2">' + f(teeth, 2) + '</td></tr></table></div>';
+      html += '<div class="card"><h2>Nearest whole belt sizes</h2><table>' +
+        '<tr><th>Belt teeth</th><th class="num">Center distance</th><th class="num"></th></tr>';
+      [lo, hi].forEach(function (n, i) {
+        if (i === 1 && hi === lo) return;
+        var cc = centerFor(n * pitch, D1, D2);
+        html += '<tr><td>' + n + '</td>' + (cc === null
+          ? '<td class="num" colspan="2">too short</td>'
+          : '<td class="num">' + f(cc, 2) + ' mm</td><td class="num">' + f(mmToIn(cc), 3) + ' in</td>') + '</tr>';
+      });
+      html += '</table></div>';
+    } else {
+      var n = parseInt($('bt').value, 10);
+      if (!(n > 0)) { err.textContent = 'Enter the belt tooth count.'; return; }
+      var cc2 = centerFor(n * pitch, D1, D2);
+      if (cc2 === null) { err.textContent = 'This belt is too short to wrap both pulleys.'; return; }
+      html += '<div class="card"><h2>Result</h2><table>' +
+        row('Belt pitch length', n * pitch) + row('Center distance', cc2) + '</table></div>';
+    }
+    out.innerHTML = html;
+  }
+
+  function setMode(m) {
+    mode = m;
+    $('m1').className = m === 1 ? 'active' : '';
+    $('m2').className = m === 2 ? 'active' : '';
+    $('cdBox').style.display = m === 1 ? '' : 'none';
+    $('unitBox').style.display = m === 1 ? '' : 'none';
+    $('beltBox').style.display = m === 2 ? '' : 'none';
+    calc();
+  }
+
+  $('m1').addEventListener('click', function () { setMode(1); });
+  $('m2').addEventListener('click', function () { setMode(2); });
+  ['belt', 't1', 't2', 'cd', 'unit', 'bt'].forEach(function (id) {
+    $(id).addEventListener('input', calc);
+    $(id).addEventListener('change', calc);
+  });
+  calc();
+})();
+
+// GitBook frame sizing: tells the GitBook block how big this page is.
+// If the author picked a fixed shape in the editor, that ratio wins.
+(function () {
+  var fixedRatio = null;
+  function sendHeight() {
+    // Measure the content itself, not the page. The page height is never
+    // smaller than the frame, so measuring it would stop the frame shrinking.
+    var wrap = document.querySelector('.wrap');
+    var w = document.documentElement.clientWidth;
+    var h = wrap.offsetHeight;
+    var ratio = fixedRatio || (w / h);
+    window.parent.postMessage({ action: { action: '@webframe.resize', aspectRatio: ratio } }, '*');
+  }
+  window.addEventListener('message', function (event) {
+    var r = parseFloat(event.data && event.data.state && event.data.state.ratio);
+    if (r > 0) { fixedRatio = r; sendHeight(); }
+  });
+  window.addEventListener('load', sendHeight);
+  window.addEventListener('resize', sendHeight);
+  if (window.ResizeObserver) new ResizeObserver(sendHeight).observe(document.body);
+  window.parent.postMessage({ action: { action: '@webframe.ready' } }, '*');
+})();
+</script>
+</body>
+</html>
