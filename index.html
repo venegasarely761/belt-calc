@@ -201,21 +201,19 @@
 
 // GitBook frame sizing: tells the GitBook block how big this page is.
 // If the author picked a fixed shape in the editor, that ratio wins.
-(function () {
-  var fixedRatio = null;
-  function sendHeight() {
-    var el = document.documentElement;
-    var ratio = fixedRatio || (el.scrollWidth / el.scrollHeight);
-    window.parent.postMessage({ action: { action: '@webframe.resize', aspectRatio: ratio } }, '*');
-  }
-  window.addEventListener('message', function (event) {
-    var r = parseFloat(event.data && event.data.state && event.data.state.ratio);
-    if (r > 0) { fixedRatio = r; sendHeight(); }
-  });
-  window.addEventListener('load', sendHeight);
-  window.addEventListener('resize', sendHeight);
-  if (window.ResizeObserver) new ResizeObserver(sendHeight).observe(document.body);
-  window.parent.postMessage({ action: { action: '@webframe.ready' } }, '*');
+let fixedRatio = null;
+function sendHeight() {
+  const ratio = fixedRatio || document.documentElement.scrollWidth / document.documentElement.scrollHeight;
+  window.parent.postMessage({ action: { action: '@webframe.resize', aspectRatio: ratio } }, '*');
+}
+window.addEventListener('message', (event) => {
+  const r = parseFloat(event.data && event.data.state && event.data.state.ratio);
+  if (r > 0) { fixedRatio = r; sendHeight(); }
+});
+window.addEventListener('load', sendHeight);
+window.addEventListener('resize', sendHeight);
+new ResizeObserver(sendHeight).observe(document.body);
+window.parent.postMessage({ action: { action: '@webframe.ready' } }, '*');
 })();
 </script>
 </body>
