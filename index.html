@@ -213,7 +213,11 @@
     // Auto mode: the frame is sized to the content, so hide the scrollbar.
     // Fixed mode: keep it, so a short frame can still be scrolled.
     document.documentElement.style.overflow = fixedRatio ? '' : 'hidden';
-    window.parent.postMessage({ action: { action: '@webframe.resize', aspectRatio: ratio } }, '*');
+    var msg = { action: '@webframe.resize', aspectRatio: ratio };
+    // Auto mode: also state the exact content height, in case GitBook applies
+    // a default height cap when none is given.
+    if (!fixedRatio) msg.maxHeight = h;
+    window.parent.postMessage({ action: msg }, '*');
   }
   window.addEventListener('message', function (event) {
     var r = parseFloat(event.data && event.data.state && event.data.state.ratio);
